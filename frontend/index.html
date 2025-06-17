@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>Boxmarket</title>
+    <link rel="stylesheet" href="vendor/bootstrap.min.css" />
+  </head>
+  <body>
+    <div class="container py-4">
+      <div id="authForms">
+        <h2>Регистрация</h2>
+        <form id="registerForm">
+          <input
+            type="email"
+            id="regEmail"
+            class="form-control mb-2"
+            placeholder="Email"
+            required
+          />
+          <input
+            type="tel"
+            id="regPhone"
+            class="form-control mb-2"
+            placeholder="Телефон"
+            required
+          />
+          <input
+            type="password"
+            id="regPass"
+            class="form-control mb-2"
+            placeholder="Пароль"
+            required
+          />
+          <button class="btn btn-primary">Зарегистрироваться</button>
+        </form>
+        <hr />
+        <h2>Вход</h2>
+        <form id="loginForm">
+          <input
+            type="email"
+            id="logEmail"
+            class="form-control mb-2"
+            placeholder="Email"
+            required
+          />
+          <input
+            type="password"
+            id="logPass"
+            class="form-control mb-2"
+            placeholder="Пароль"
+            required
+          />
+          <button class="btn btn-success">Войти</button>
+        </form>
+      </div>
+
+      <div id="containersList" class="row d-none"></div>
+    </div>
+    <script src="vendor/axios.min.js"></script>
+    <script src="assets/js/main.js"></script>
+  </body>
+</html>

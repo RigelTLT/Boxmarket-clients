@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>Бронирование контейнера</title>
+    <link rel="stylesheet" href="vendor/bootstrap.min.css" />
+  </head>
+  <body>
+    <div class="container py-4">
+      <h2>Бронирование контейнера</h2>
+      <form id="bookingForm">
+        <div class="mb-3">
+          <label for="containerNumber" class="form-label"
+            >Номер контейнера</label
+          >
+          <input
+            type="text"
+            id="containerNumber"
+            class="form-control"
+            readonly
+          />
+        </div>
+        <div class="mb-3">
+          <label for="userPhone" class="form-label">Телефон</label>
+          <input type="tel" id="userPhone" class="form-control" required />
+        </div>
+        <div class="mb-3">
+          <label for="userEmail" class="form-label">Email</label>
+          <input type="email" id="userEmail" class="form-control" required />
+        </div>
+        <button class="btn btn-primary">Отправить заявку</button>
+      </form>
+    </div>
+    <script src="vendor/axios.min.js"></script>
+    <script>
+      document.getElementById("bookingForm").onsubmit = (e) => {
+        e.preventDefault();
+        const number = document.getElementById("containerNumber").value;
+        const phone = document.getElementById("userPhone").value;
+        const email = document.getElementById("userEmail").value;
+        const token = localStorage.getItem("token");
+        axios
+          .post(
+            "http://localhost:3000/api/booking",
+            { number, phone, email },
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          )
+          .then(() => alert("Заявка отправлена"))
+          .catch((err) => alert("Ошибка: " + err.response.data.message));
+      };
+      const params = new URLSearchParams(window.location.search);
+      document.getElementById("containerNumber").value =
+        params.get("number") || "";
+    </script>
+  </body>
+</html>
