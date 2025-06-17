@@ -4,6 +4,7 @@ let token = null;
 document.getElementById("registerForm").onsubmit = async (e) => {
   e.preventDefault();
   const res = await axios.post(`${API}/auth/register`, {
+    fullName: document.getElementById("regFullName").value,
     email: document.getElementById("regEmail").value,
     phone: document.getElementById("regPhone").value,
     password: document.getElementById("regPass").value,

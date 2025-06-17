@@ -1,6 +1,7 @@
 const puppeteer = require("puppeteer");
-const xlsx = require("xlsx");
 const fs = require("fs");
+
+const xlsx = require("xlsx");
 const path = require("path");
 const unzipper = require("unzipper");
 const CONFIG = require("../config");
@@ -16,16 +17,19 @@ async function fetchExcelAndSync(db) {
   await page.waitForNavigation();
 
   // Переход на страницу списка и скачивание Excel
-  await page.click("#mainpage\\:j_id75");
-  await page.waitForSelector("#containersForm\\:containersTable\\:j_id340");
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
+  await page.waitForSelector("#containersForm\\:containersTable\\:j_id340", {
+    timeout: 5000,
+  }); // Ждем 5 секунд, чтобы элемент стал доступным
+  const [excelResponse] = await Promise.all([
+    page.waitForResponse(
+      (resp) =>
+        resp.headers()["content-disposition"] &&
+        resp.headers()["content-disposition"].includes("attachment")
+    ),
     page.click("#containersForm\\:containersTable\\:j_id340"),
   ]);
-  const tmpPath = path.resolve("tmp");
-  if (!fs.existsSync(tmpPath)) fs.mkdirSync(tmpPath);
-  const filePath = path.join(tmpPath, "containers.xlsx");
-  await download.saveAs(filePath);
+  const excelBuffer = await excelResponse.buffer();
+  fs.writeFileSync(filePath, excelBuffer);
 
   // Чтение и парсинг Excel
   const wb = xlsx.readFile(filePath);
@@ -61,18 +65,21 @@ async function syncContainers(data, db) {
 
 async function fetchPhotosFor(page, idx, number, db) {
   const Container = db.model("Container");
-  // Переход на страницу контейнера
+  // Переход на страницу контейнера и скачивание архива с фото
   await page.click(
     `#containersForm\\:containersTable\\:${idx}\\:containercard`
   );
-  await page.waitForSelector('button[onclick*=\\"UploadAllFiles\\"]');
-  const [dl] = await Promise.all([
-    page.waitForEvent("download"),
-    page.click('button[onclick*=\\"UploadAllFiles\\"]'),
+  await page.waitForSelector('button[onclick*="UploadAllFiles"]');
+  const [photoResponse] = await Promise.all([
+    page.waitForResponse(
+      (resp) =>
+        resp.headers()["content-disposition"] &&
+        resp.headers()["content-disposition"].includes("attachment")
+    ),
+    page.click('button[onclick*="UploadAllFiles"]'),
   ]);
-  const tmpPath = path.resolve("tmp");
-  const zipPath = path.join(tmpPath, `${number}.zip`);
-  await dl.saveAs(zipPath);
+  const zipBuffer = await photoResponse.buffer();
+  fs.writeFileSync(zipPath, zipBuffer);
 
   // Распаковка архива
   const extractDir = path.join(CONFIG.CACHE_DIR, number);

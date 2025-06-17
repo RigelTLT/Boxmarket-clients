@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cron = require("node-cron");
 const path = require("path");
+const open = require("open");
 const CONFIG = require("./config");
 const { fetchExcelAndSync } = require("./services/scraper");
 
@@ -13,6 +14,8 @@ const bookingRoutes = require("./routes/booking");
   try {
     await mongoose.connect(CONFIG.MONGODB_URI);
     console.log("Connected to MongoDB");
+    // Initial sync on startup
+    fetchExcelAndSync(mongoose.connection).catch(console.error);
   } catch (err) {
     console.error("MongoDB connection error:", err);
     process.exit(1);
@@ -20,13 +23,16 @@ const bookingRoutes = require("./routes/booking");
 
   const app = express();
   app.use(express.json());
-  // Статика для кеша фото
+  // Serve frontend static files
+  app.use("/", express.static(path.resolve(__dirname, "../frontend")));
+  // Static for cached photos
   app.use("/cache", express.static(path.resolve(CONFIG.CACHE_DIR)));
 
   app.use("/api/auth", authRoutes);
   app.use("/api/containers", containersRoutes);
   app.use("/api/booking", bookingRoutes);
 
+  // Schedule daily sync at midnight Berlin time
   cron.schedule(
     "0 0 * * *",
     () => {
@@ -37,5 +43,9 @@ const bookingRoutes = require("./routes/booking");
   );
 
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`);
+    // Open frontend automatically
+    open(`http://localhost:${PORT}`);
+  });
 })();

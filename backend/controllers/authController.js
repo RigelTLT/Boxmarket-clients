@@ -4,15 +4,15 @@ const User = require("../models/User");
 const CONFIG = require("../config");
 
 async function register(req, res) {
-  const { email, phone, password } = req.body;
-  if (!email || !phone || !password)
+  const { fullName, email, phone, password } = req.body;
+  if (!fullName || !email || !phone || !password)
     return res.status(400).json({ message: "Missing fields" });
   const existing = await User.findOne({ email });
   if (existing)
     return res.status(400).json({ message: "Email already in use" });
 
   const hashed = bcrypt.hashSync(password, 8);
-  const user = new User({ email, phone, password: hashed });
+  const user = new User({ fullName, email, phone, password: hashed });
   await user.save();
   res.status(201).json({ message: "User registered" });
 }
