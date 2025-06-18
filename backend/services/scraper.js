@@ -106,29 +106,38 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   const axios = require("axios");
   const Container = db.model("Container");
 
-  // Параметры пагинации и определение страницы
+  // Полный индекс строки без сброса при пагинации
+  const rowSelector = `#containersForm\\:containersTable\\:${idx}\\:containercard`;
+  console.log(idx);
+  // Определяем количество переходов вперёд до появления нужного ряда
   const pageSize = 100;
   const targetPage = Math.floor(idx / pageSize);
 
-  // Селектор для строки контейнера (используем абсолютный индекс)
-  const rowSelector = `#containersForm\\:containersTable\\:${idx}\\:containercard`;
-  console.log(idx);
-  // Навигация по страницам вперед, если необходимо
+  // Переходим на нужную страницу (кликаем "вперед" targetPage раз)
   for (let p = 0; p < targetPage; p++) {
-    await page.click("#containersForm\\:containersTable\\:j_id669next");
-    // Ждем, когда целевая строка появится в DOM и будет готова к клику
-    await page.waitForFunction(
-      (sel) => !!document.querySelector(sel),
-      { timeout: 20000 },
-      rowSelector
+    await page.waitForSelector(
+      "#containersForm\\:containersTable\\:j_id669next",
+      { timeout: 20000 }
     );
+    // Ищем кнопку "вперед" через wildcard селектор
+    const nextBtn = await page.$('[id$="j_id669next"]');
+    if (!nextBtn) {
+      throw new Error(`Next page button not found for page ${p + 1}`);
+    }
+    // Переход на следующую страницу и ожидание появления нужной строки
+    await Promise.all([
+      nextBtn.click(),
+      page.waitForSelector(rowSelector, { timeout: 20000 }),
+    ]);
   }
 
-  // Кликаем по строке контейнера
+  // Ждём появления нужного элемента с абсолютным индексом
   await page.waitForSelector(rowSelector, { timeout: 20000 });
+  rowSelector, { timeout: 20000 };
+  // Кликаем по карточке контейнера
   await page.click(rowSelector);
 
-  // Ждем появления кнопки для выгрузки фотографий
+  // Ждём появления кнопки выгрузки фотографий
   await page.waitForFunction(
     () => Boolean(document.querySelector('[onclick*="UploadAllFiles"]')),
     { timeout: 20000 }
@@ -146,7 +155,7 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   if (!downloadFragment) throw new Error("Download fragment not found");
   const downloadUrl = new URL(downloadFragment, page.url()).href;
 
-  // Скачиваем архив через axios с передачей куки
+  // Получаем куки и скачиваем архив через axios
   const cookies = await page.cookies();
   const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
   const response = await axios.get(downloadUrl, {
@@ -156,7 +165,7 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   if (response.status !== 200)
     throw new Error(`Failed to download archive: ${response.status}`);
 
-  // Сохраняем и распаковываем архив
+  // Сохраняем архив и распаковываем
   const zipPath = path.join(tmpDir, `${number}.zip`);
   fs.writeFileSync(zipPath, response.data);
   const extractDir = path.resolve(CONFIG.CACHE_DIR, number);
@@ -175,13 +184,14 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
     .map((f) => path.join("cache", number, f));
   await Container.updateOne({ number }, { photos: files });
 
-  // Возврат к списку контейнеров и навигация назад
+  // Возврат к списку контейнеров
   await page.click("#containercardform\\:linkback");
-  await page.waitForSelector(
-    "#containersForm\\:containersTable\\:0\\:containercard",
-    { timeout: 20000 }
-  );
+  // Переходим обратно на первую страницу, кликая "назад" targetPage раз
   for (let p = 0; p < targetPage; p++) {
+    await page.waitForSelector(
+      "#containersForm\\:containersTable\\:j_id669previous",
+      { timeout: 20000 }
+    );
     await page.click("#containersForm\\:containersTable\\:j_id669previous");
     await page.waitForTimeout(500);
   }
