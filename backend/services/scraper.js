@@ -106,44 +106,28 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   const axios = require("axios");
   const Container = db.model("Container");
 
-  // Полный индекс строки без сброса при пагинации
-  const rowSelector = `#containersForm\\:containersTable\\:${idx}\\:containercard`;
-  console.log(idx);
-  // Определяем количество переходов вперёд до появления нужного ряда
+  // Определяем номер страницы и абсолютный индекс строки
   const pageSize = 100;
-  const targetPage = Math.floor(idx / pageSize);
+  const pageNum = Math.floor(idx / pageSize) + 1; // первая страница = 1
+  const rowSelector = `#containersForm\\:containersTable\\:${idx}\\:containercard`;
 
-  // Переходим на нужную страницу (кликаем "вперед" targetPage раз)
-  for (let p = 0; p < targetPage; p++) {
-    await page.waitForSelector(
-      "#containersForm\\:containersTable\\:j_id669next",
-      { timeout: 20000 }
-    );
-    // Ищем кнопку "вперед" через wildcard селектор
-    const nextBtn = await page.$('[id$="j_id669next"]');
-    if (!nextBtn) {
-      throw new Error(`Next page button not found for page ${p + 1}`);
-    }
-    // Переход на следующую страницу и ожидание появления нужной строки
-    await Promise.all([
-      nextBtn.click(),
-      page.waitForSelector(rowSelector, { timeout: 20000 }),
-    ]);
-  }
+  // Перелистывание через ссылки на страницы
+  const pageLinkSelector = `#containersForm\\:containersTable\\:j_id669idx${pageNum}`;
+  // Ждем появления ссылки на нужную страницу и кликаем
+  await page.waitForSelector(pageLinkSelector, { timeout: 20000 });
+  await Promise.all([page.click(pageLinkSelector), page.waitForTimeout(1000)]);
 
-  // Ждём появления нужного элемента с абсолютным индексом
+  // Ждем, когда нужная строка с абсолютным индексом станет доступна
   await page.waitForSelector(rowSelector, { timeout: 20000 });
-  rowSelector, { timeout: 20000 };
-  // Кликаем по карточке контейнера
   await page.click(rowSelector);
 
-  // Ждём появления кнопки выгрузки фотографий
+  // Ждем появления кнопки для выгрузки фотографий
   await page.waitForFunction(
-    () => Boolean(document.querySelector('[onclick*="UploadAllFiles"]')),
+    () => !!document.querySelector('[onclick*="UploadAllFiles"]'),
     { timeout: 20000 }
   );
 
-  // Извлечение фрагмента URL для скачивания архива
+  // Извлекаем фрагмент URL для скачивания архива
   const downloadFragment = await page.evaluate(() => {
     const el = document.querySelector('[onclick*="UploadAllFiles"]');
     const onclick = el.getAttribute("onclick");
@@ -155,7 +139,7 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   if (!downloadFragment) throw new Error("Download fragment not found");
   const downloadUrl = new URL(downloadFragment, page.url()).href;
 
-  // Получаем куки и скачиваем архив через axios
+  // Скачиваем архив через axios с передачей куки
   const cookies = await page.cookies();
   const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
   const response = await axios.get(downloadUrl, {
@@ -178,23 +162,38 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
     .promise();
 
   // Обновление путей к фотографиям в БД
-  const files = fs
-    .readdirSync(extractDir)
-    .filter((f) => f.startsWith(number))
-    .map((f) => path.join("cache", number, f));
-  await Container.updateOne({ number }, { photos: files });
-
-  // Возврат к списку контейнеров
-  await page.click("#containercardform\\:linkback");
-  // Переходим обратно на первую страницу, кликая "назад" targetPage раз
-  for (let p = 0; p < targetPage; p++) {
-    await page.waitForSelector(
-      "#containersForm\\:containersTable\\:j_id669previous",
-      { timeout: 20000 }
-    );
-    await page.click("#containersForm\\:containersTable\\:j_id669previous");
-    await page.waitForTimeout(500);
+  // Сбор всех фотографий рекурсивно
+  function walkDir(dir) {
+    let results = [];
+    fs.readdirSync(dir).forEach((file) => {
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        results = results.concat(walkDir(fullPath));
+      } else if (/\.(jpe?g|png|gif)$/i.test(file)) {
+        results.push(fullPath);
+      }
+    });
+    return results;
   }
+  const imageFiles = walkDir(extractDir);
+  // Преобразуем абсолютные пути файлов в URL-относительные для Express static '/cache'
+  const cacheBase = path.resolve(__dirname, "..", "cache");
+  const files = imageFiles.map((fp) => {
+    // путь относительно backend/cache
+    let relPath = path.relative(cacheBase, fp);
+    // нормализуем разделители
+    relPath = relPath.split(path.sep).join("/");
+    return relPath;
+  });
+  await Container.updateOne({ number }, { photos: files });
+  ({ number }), { photos: files };
+  ({ number }), { photos: files };
+  ({ number }), { photos: files };
+
+  // Возврат к списку: клик по ссылке "назад"
+  await page.click("#containercardform\\:linkback");
+  await page.waitForSelector(pageLinkSelector, { timeout: 20000 });
 }
 
 module.exports = { fetchExcelAndSync };

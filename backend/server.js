@@ -5,7 +5,7 @@ const path = require("path");
 const open = require("open");
 const CONFIG = require("./config");
 const { fetchExcelAndSync } = require("./services/scraper");
-
+const fs = require("fs");
 const authRoutes = require("./routes/auth");
 const containersRoutes = require("./routes/containers");
 const bookingRoutes = require("./routes/booking");
@@ -25,11 +25,14 @@ const bookingRoutes = require("./routes/booking");
   app.use(express.json());
   // Serve frontend static files
   app.use("/", express.static(path.resolve(__dirname, "../frontend")));
-  // Static for cached photos
-  app.use("/cache", express.static(path.resolve(CONFIG.CACHE_DIR)));
+  // Serve cached photos from backend/cache
+  const cachePath = path.resolve(__dirname, "cache");
+  if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath, { recursive: true });
+  app.use("/cache", express.static(cachePath));
 
   app.use("/api/auth", authRoutes);
   app.use("/api/containers", containersRoutes);
+  app.use("/api/booking", bookingRoutes);
   app.use("/api/booking", bookingRoutes);
 
   // Schedule daily sync at midnight Berlin time

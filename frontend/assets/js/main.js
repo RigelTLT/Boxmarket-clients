@@ -32,11 +32,15 @@ async function loadContainers() {
   res.data.forEach((c) => {
     const col = document.createElement("div");
     col.className = "col-md-4";
+    // Выбираем первый доступный источник фото или плейсхолдер
+    const photoSrc =
+      c.photos && c.photos.length > 0
+        ? `http://localhost:3000/cache/${c.photos[0]}`
+        : "vendor/placeholder.jpg";
+
     col.innerHTML = `
       <div class="card mb-3">
-        <img src="http://localhost:3000/${
-          c.photos[0]
-        }" class="card-img-top" alt="${c.number}">
+        <img src="${photoSrc}" class="card-img-top" alt="${c.number}">
         <div class="card-body">
           <h5 class="card-title">${c.number}</h5>
           <p class="card-text">Параметры: ${JSON.stringify(c.params)}</p>
