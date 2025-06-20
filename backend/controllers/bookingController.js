@@ -1,17 +1,41 @@
+const Booking = require("../models/Booking");
+const User = require("../models/User");
 const Container = require("../models/Container");
-const { sendLead } = require("../services/bitrix24");
+const { sendLeadToBitrix } = require("../services/bitrix24");
 
-async function bookContainer(req, res) {
-  const { number, phone, email } = req.body;
-  if (!number || !phone || !email)
-    return res.status(400).json({ message: "Missing fields" });
+exports.createBooking = async (req, res, next) => {
+  try {
+    const { userId, containerId } = req.body;
+    if (!userId || !containerId) {
+      return res
+        .status(400)
+        .json({ error: "userId и containerId обязательны" });
+    }
+    // создаём запись правильно по полям схемы
+    const booking = await Booking.create({
+      user: userId,
+      container: containerId,
+    });
 
-  const container = await Container.findOne({ number });
-  if (!container)
-    return res.status(404).json({ message: "Container not found" });
+    // получаем полные объекты для отправки в Bitrix24
+    const user = await User.findById(userId);
+    const container = await Container.findById(containerId);
+    if (!user || !container) {
+      return res
+        .status(404)
+        .json({ error: "Пользователь или контейнер не найдены" });
+    }
 
-  await sendLead(container, { phone, email });
-  res.json({ message: "Booking sent" });
-}
+    // 3) Отправить лид в Bitrix24
+    await sendLeadToBitrix({
+      name: user.name,
+      email: user.email,
+      containerName: container.name,
+      containerCity: container.city,
+    });
 
-module.exports = { bookContainer };
+    res.status(201).json({ message: "Заявка принята" });
+  } catch (err) {
+    next(err);
+  }
+};

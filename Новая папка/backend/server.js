@@ -32,8 +32,8 @@ const bookingRoutes = require("./routes/booking");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/containers", containersRoutes);
-  // POST будет на /api/bookings
-  app.use("/api/bookings", bookingRoutes);
+  app.use("/api/booking", bookingRoutes);
+  app.use("/api/booking", bookingRoutes);
 
   // Schedule daily sync at midnight Berlin time
   cron.schedule(

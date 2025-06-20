@@ -117,7 +117,10 @@ $(document).ready(() => {
   $("#confirmBookingBtn").on("click", async function () {
     const containerId = $(this).data("container-id");
     try {
-      await axios.post("/api/bookings", { userId, containerId });
+      await axios.post("/api/bookings", {
+        containerId,
+        userId: currentUser.id,
+      });
       // Закрываем модал
       bootstrap.Modal.getInstance(
         document.getElementById("bookingModal")
@@ -360,7 +363,7 @@ function openModal(c) {
 
 async function bookContainer(id) {
   try {
-    await axios.post("/api/bookings", { userId, containerId });
+    await axios.post(`${API}/booking`, { containerId: id });
     alert("Заявка отправлена!");
     modalInstance.hide();
   } catch (err) {
