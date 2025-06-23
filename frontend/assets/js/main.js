@@ -219,11 +219,11 @@ function renderContainers(items) {
             </div>
              <div class="card-footer">
             <button
-        class="reserve-btn btn btn-sm btn-success w-100 book-btn mt-2"
+        class="reserve-btn btn btn-sm btn-success w-100 book-btn mt-2 justify-content-center d-flex align-items-center"
         data-container-id="{{this.id}}"
         data-container-name="{{this.name}}"
         data-container-city="{{this.city}}">
-        Забронировать
+        <img src="assets/img/icons8-order-30.png" class="img-btn" alt="Забронировать">Забронировать
       </button>
         </div>
       </div>`
@@ -320,7 +320,6 @@ function openModal(c) {
        </div>`
     );
   });
-
   // Build params grid
   const keys = [
     "Габариты",
@@ -360,6 +359,7 @@ function openModal(c) {
 
 async function bookContainer(id) {
   try {
+    console.log(id);
     await axios.post("/api/bookings", { userId, containerId });
     alert("Заявка отправлена!");
     modalInstance.hide();

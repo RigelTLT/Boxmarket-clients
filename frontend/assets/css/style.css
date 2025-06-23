@@ -75,3 +75,11 @@ body {
   --bs-pagination-active-bg: #47b7bf;
   --bs-pagination-active-border-color: #47b7bf;
 }
+.select2-container--default
+  .select2-results__option--highlighted.select2-results__option--selectable {
+  background-color: #00335f !important;
+}
+.img-btn {
+  padding: 0 10px;
+  width: 40px;
+}
