@@ -75,7 +75,11 @@ async function sendBooking(containerId) {
     if (modalEl) bootstrap.Modal.getInstance(modalEl).hide();
     loadContainers();
   } catch (err) {
-    alert("Ошибка при отправке заявки");
+    if (err.response?.status === 409) {
+      alert("Вы уже отправляли заявку на этот контейнер.");
+    } else {
+      alert("Ошибка при отправке заявки");
+    }
     console.error(err);
   }
 }

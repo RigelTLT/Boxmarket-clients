@@ -35,6 +35,10 @@ const bookingRoutes = require("./routes/booking");
   // POST будет на /api/bookings
   app.use("/api/bookings", bookingRoutes);
 
+  // Обработка только НЕ-API путей
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/index.html"));
+  });
   // Schedule daily sync at midnight Berlin time
   cron.schedule(
     "0 0 * * *",
