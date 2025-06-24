@@ -3,138 +3,186 @@ const API = "/api";
 let token = localStorage.getItem("token") || null;
 let modalInstance;
 let currentPage = 1;
-// Load persisted page size or default
 let pageSize = parseInt(localStorage.getItem("pageSize"), 10) || 12;
 let totalPages = 1;
 const maxPageButtons = 4;
-$(document).ready(() => {
-  if (!token) {
-    $("#authWrapper").show();
-    $("body > :not(#authWrapper)").css("visibility", "hidden");
-  } else {
-    $("#authWrapper").hide();
-    $("body > :not(#authWrapper)").css("visibility", "visible");
+// Функция для декодирования JWT токена
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch (e) {
+    return null;
+  }
+}
+
+// Получаем данные пользователя при загрузке страницы
+async function loadUserData() {
+  if (!token) return;
+  try {
+    const res = await axios.get(`${API}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    currentUser = res.data;
+  } catch (err) {
+    console.error("Ошибка загрузки данных пользователя", err);
+  }
+}
+function foramatedTime(serialNumber) {
+  const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  const dateInMs = serialNumber * millisecondsPerDay;
+  const date = new Date(excelEpoch.getTime() + dateInMs);
+  const pad = (num) => String(num).padStart(2, "0");
+  const day = pad(date.getUTCDate());
+  const month = pad(date.getUTCMonth() + 1);
+  const year = date.getUTCFullYear();
+  const hours = pad(date.getUTCHours());
+  const minutes = pad(date.getUTCMinutes());
+  const seconds = pad(date.getUTCSeconds());
+  return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
+}
+function openBookingModal(containerId, containerName, containerCity) {
+  if (!currentUser) {
+    alert("Вы должны быть авторизованы, чтобы отправить заявку.");
+    return;
   }
 
-  let isLogin = true;
+  $("#bookingUserName").text(currentUser.fullName || currentUser.name);
+  $("#bookingUserEmail").text(currentUser.email);
+  $("#bookingUserPhone").text(currentUser.phone || "Не указан");
+  $("#bookingContainerName").text(containerName);
+  $("#bookingContainerCity").text(containerCity);
 
-  $("#toggleAuth").on("click", () => {
-    isLogin = !isLogin;
-    $("#authTitle").text(isLogin ? "Вход" : "Регистрация");
-    $("#authActionBtn").text(isLogin ? "Войти" : "Зарегистрироваться");
-    $("#toggleAuth").text(
-      isLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"
-    );
-    $("#authFullName, #authPhone").toggleClass("d-none", isLogin);
-  });
-
-  $("#authActionBtn").on("click", async () => {
-    const email = $("#authEmail").val();
-    const password = $("#authPassword").val();
-    const data = { email, password };
-
-    if (!isLogin) {
-      data.fullName = $("#authFullName").val();
-      data.phone = $("#authPhone").val();
-    }
-
-    try {
-      const url = isLogin ? `${API}/auth/login` : `${API}/auth/register`;
-      const res = await axios.post(url, data);
-      localStorage.setItem("token", res.data.token);
-      location.reload();
-    } catch (err) {
-      alert("Ошибка авторизации/регистрации");
-    }
-  });
-});
-$(document).ready(() => {
-  // Инициализация селектов через Select2
-  $("#typeFilter, #cityFilter").select2({
-    placeholder: "Выберите значение(я)",
-  });
-  $("#pageSizeSelect").val(pageSize);
-  // Сброс и выход
-  $("#resetFiltersBtn").on("click", () => {
-    $("#typeFilter, #cityFilter").val(null).trigger("change");
-    $("#searchInput").val("");
-    currentPage = 1;
-    loadContainers();
-  });
-  $("#logoutBtn").on("click", () => {
-    localStorage.removeItem("token");
-    window.location.reload();
-  });
-  $("#typeFilter, #cityFilter").on("change", () => {
-    currentPage = 1; // сбрасываем на первую страницу
-    loadContainers(); // заново грузим данные с учётом новых фильтров
-  });
-  $("#searchInput").on("input", () => {
-    currentPage = 1;
-    loadContainers();
-  });
-  // Изменение размера страницы: сохранить и перезагрузить
-  $("#pageSizeSelect").on("change", function () {
-    pageSize = parseInt($(this).val(), 10);
-    localStorage.setItem("pageSize", pageSize);
-    currentPage = 1;
-    loadContainers();
-  });
-  if (token) {
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  $("#confirmBookingBtn").data("container-id", containerId);
+  const modal = new bootstrap.Modal(document.getElementById("bookingModal"));
+  modal.show();
+}
+async function sendBooking(containerId) {
+  if (!currentUser || !token) {
+    alert("Вы должны быть авторизованы, чтобы отправить заявку.");
+    return;
   }
-
-  // Элементы управления пагинацией
-  $("#pageSizeSelect").on("change", function () {
-    pageSize = parseInt($(this).val(), 10);
-    currentPage = 1;
-    loadContainers();
-  });
-  // 1) Вешаем обработчик на кнопки “Забронировать”
-  $(document).on("click", ".reserve-btn", function () {
-    const containerId = $(this).data("container-id");
-    const containerName = $(this).data("container-name");
-    const containerCity = $(this).data("container-city");
-
-    // Предположим, что у вас есть глобальный объект currentUser
-    // с полями name и email, полученный при логине
-    $("#modalUserName").text(currentUser.name);
-    $("#modalUserEmail").text(currentUser.email);
-    $("#modalContainerName").text(containerName);
-    $("#modalContainerCity").text(containerCity);
-
-    // Сохраняем в дата-атрибуте ID контейнера
-    $("#confirmBookingBtn").data("container-id", containerId);
-
-    // Открываем модал
-    const bookingModal = new bootstrap.Modal(
-      document.getElementById("bookingModal")
+  try {
+    await axios.post(
+      `${API}/bookings`,
+      { containerId },
+      { headers: { Authorization: `Bearer ${token}` } }
     );
-    bookingModal.show();
-  });
+    alert("Заявка успешно отправлена!");
+    const modalEl = document.getElementById("bookingModal");
+    if (modalEl) bootstrap.Modal.getInstance(modalEl).hide();
+    loadContainers();
+  } catch (err) {
+    alert("Ошибка при отправке заявки");
+    console.error(err);
+  }
+}
 
-  // 2) При клике “Подтвердить” — отправляем запрос
-  $("#confirmBookingBtn").on("click", async function () {
-    const containerId = $(this).data("container-id");
-    try {
-      await axios.post("/api/bookings", { userId, containerId });
-      // Закрываем модал
-      bootstrap.Modal.getInstance(
-        document.getElementById("bookingModal")
-      ).hide();
+$(document).ready(() => {
+  $(async function () {
+    await loadUserData();
 
-      // Успешное сообщение
-      alert("Заявка принята, с вами скоро свяжутся");
-      // Можно — обновить список или перенаправить
+    if (!token) {
+      $("#authWrapper").show();
+      $("body > :not(#authWrapper)").css("visibility", "hidden");
+    } else {
+      $("#authWrapper").hide();
+      $("body > :not(#authWrapper)").css("visibility", "visible");
+    }
+
+    $("#toggleAuth").on("click", () => {
+      const isLogin = $("#authTitle").text() === "Вход";
+      $("#authTitle").text(isLogin ? "Регистрация" : "Вход");
+      $("#authActionBtn").text(isLogin ? "Зарегистрироваться" : "Войти");
+      $("#toggleAuth").text(
+        isLogin ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"
+      );
+      $("#authFullName, #authPhone").toggleClass("d-none", !isLogin);
+    });
+
+    $("#authActionBtn").on("click", async () => {
+      const isLogin = $("#authTitle").text() === "Вход";
+      const data = {
+        email: $("#authEmail").val(),
+        password: $("#authPassword").val(),
+      };
+      if (!isLogin) {
+        data.fullName = $("#authFullName").val();
+        data.phone = $("#authPhone").val();
+      }
+      try {
+        const url = isLogin ? `${API}/auth/login` : `${API}/auth/register`;
+        const res = await axios.post(url, data);
+        localStorage.setItem("token", res.data.token);
+        location.reload();
+      } catch (err) {
+        alert("Ошибка авторизации/регистрации");
+      }
+    });
+
+    $(document).on(
+      "click",
+      ".book-btn, .reserve-btn, #modalBookBtn",
+      function () {
+        const $btn = $(this);
+        const containerId = $btn.data("container-id");
+        const containerName = $btn.data("container-name") || "Контейнер";
+        const containerCity = $btn.data("container-city") || "";
+        openBookingModal(containerId, containerName, containerCity);
+      }
+    );
+
+    $("#confirmBookingBtn").on("click", function () {
+      const containerId = $(this).data("container-id");
+      sendBooking(containerId);
+    });
+    // Инициализация селектов через Select2
+    $("#typeFilter, #cityFilter").select2({
+      placeholder: "Выберите значение(я)",
+    });
+    $("#pageSizeSelect").val(pageSize);
+    // Сброс и выход
+    $("#resetFiltersBtn").on("click", () => {
+      $("#typeFilter, #cityFilter").val(null).trigger("change");
+      $("#searchInput").val("");
+      currentPage = 1;
       loadContainers();
-    } catch (err) {
-      console.error(err);
-      alert("Не удалось отправить заявку. Попробуйте снова.");
+    });
+    $("#logoutBtn").on("click", () => {
+      localStorage.removeItem("token");
+      window.location.reload();
+    });
+    $("#typeFilter, #cityFilter").on("change", () => {
+      currentPage = 1; // сбрасываем на первую страницу
+      loadContainers(); // заново грузим данные с учётом новых фильтров
+    });
+    $("#searchInput").on("input", () => {
+      currentPage = 1;
+      loadContainers();
+    });
+    // Изменение размера страницы: сохранить и перезагрузить
+    $("#pageSizeSelect").on("change", function () {
+      pageSize = parseInt($(this).val(), 10);
+      localStorage.setItem("pageSize", pageSize);
+      currentPage = 1;
+      loadContainers();
+    });
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
+
+    // Элементы управления пагинацией
+    $("#pageSizeSelect").on("change", function () {
+      pageSize = parseInt($(this).val(), 10);
+      currentPage = 1;
+      loadContainers();
+    });
+    // Загрузка фильтров и контейнеров
+    loadFilters();
+    loadContainers();
   });
-  // Загрузка фильтров и контейнеров
-  loadFilters();
-  loadContainers();
 });
 
 async function loadFilters() {
@@ -220,9 +268,9 @@ function renderContainers(items) {
              <div class="card-footer">
             <button
         class="reserve-btn btn btn-sm btn-success w-100 book-btn mt-2 justify-content-center d-flex align-items-center"
-        data-container-id="{{this.id}}"
-        data-container-name="{{this.name}}"
-        data-container-city="{{this.city}}">
+        data-container-id="${c._id}"
+    data-container-name="${c.params?.Тип || c.number}"
+    data-container-city="${c.params?.Город || ""}">
         <img src="assets/img/icons8-order-30.png" class="img-btn" alt="Забронировать">Забронировать
       </button>
         </div>
@@ -233,11 +281,6 @@ function renderContainers(items) {
       if ($(e.target).hasClass("book-btn")) return;
       openModal(c);
     });
-    $card.find(".book-btn").on("click", (e) => {
-      e.stopPropagation();
-      bookContainer(c._id);
-    });
-
     $list.append($card);
   });
 }
@@ -293,21 +336,6 @@ function renderPagination() {
   });
 }
 
-function foramatedTime(serialNumber) {
-  const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  const dateInMs = serialNumber * millisecondsPerDay;
-  const date = new Date(excelEpoch.getTime() + dateInMs);
-  const pad = (num) => String(num).padStart(2, "0");
-  const day = pad(date.getUTCDate());
-  const month = pad(date.getUTCMonth() + 1);
-  const year = date.getUTCFullYear();
-  const hours = pad(date.getUTCHours());
-  const minutes = pad(date.getUTCMinutes());
-  const seconds = pad(date.getUTCSeconds());
-  return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
-}
-
 function openModal(c) {
   $("#containerModal").data("container-id", c._id);
   $("#modalTitle").text(`${c.params.Тип} — ${c.number}`);
@@ -355,16 +383,8 @@ function openModal(c) {
     document.getElementById("containerModal")
   );
   modalInstance.show();
-}
-
-async function bookContainer(id) {
-  try {
-    console.log(id);
-    await axios.post("/api/bookings", { userId, containerId });
-    alert("Заявка отправлена!");
-    modalInstance.hide();
-  } catch (err) {
-    console.error("Ошибка бронирования", err);
-    alert("Ошибка при бронировании");
-  }
+  $("#modalBookBtn")
+    .data("container-id", c._id)
+    .data("container-name", c.params?.Тип || c.number)
+    .data("container-city", c.params?.Город || "");
 }

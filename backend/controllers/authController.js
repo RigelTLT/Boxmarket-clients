@@ -28,7 +28,33 @@ async function login(req, res) {
   const token = jwt.sign({ id: user._id }, CONFIG.JWT_SECRET, {
     expiresIn: "7d",
   });
-  res.json({ token });
+  res.json({
+    token,
+    user: {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+    },
+  });
+}
+async function getCurrentUser(req, res) {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Не авторизован" });
+    }
+
+    res.json({
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+    });
+  } catch (err) {
+    console.error("Ошибка получения данных пользователя:", err);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
 }
 
-module.exports = { register, login };
+module.exports = { register, login, getCurrentUser };

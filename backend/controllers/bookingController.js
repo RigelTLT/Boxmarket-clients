@@ -5,19 +5,28 @@ const { sendLeadToBitrix } = require("../services/bitrix24");
 
 exports.createBooking = async (req, res, next) => {
   try {
-    const { userId, containerId } = req.body;
+    const { containerId } = req.body;
+    const userId = req.user?.id;
+
     if (!userId || !containerId) {
-      return res
-        .status(400)
-        .json({ error: "userId и containerId обязательны" });
+      return res.status(400).json({
+        error: "containerId обязателен, пользователь должен быть авторизован",
+      });
     }
-    // создаём запись правильно по полям схемы
+
+    const existing = await Booking.findOne({
+      user: userId,
+      container: containerId,
+    });
+    if (existing) {
+      return res.status(409).json({ error: "Заявка уже отправлена ранее" });
+    }
+
     const booking = await Booking.create({
       user: userId,
       container: containerId,
     });
 
-    // получаем полные объекты для отправки в Bitrix24
     const user = await User.findById(userId);
     const container = await Container.findById(containerId);
     if (!user || !container) {
@@ -26,12 +35,13 @@ exports.createBooking = async (req, res, next) => {
         .json({ error: "Пользователь или контейнер не найдены" });
     }
 
-    // 3) Отправить лид в Bitrix24
     await sendLeadToBitrix({
-      name: user.name,
+      name: user.fullName || user.name,
       email: user.email,
-      containerName: container.name,
-      containerCity: container.city,
+      phone: user.phone,
+      containerName:
+        container.name || container.params?.Тип || container.number,
+      containerCity: container.city || container.params?.Город || "Не указан",
     });
 
     res.status(201).json({ message: "Заявка принята" });
