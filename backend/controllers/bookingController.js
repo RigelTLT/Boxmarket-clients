@@ -39,9 +39,11 @@ exports.createBooking = async (req, res, next) => {
       name: user.fullName || user.name,
       email: user.email,
       phone: user.phone,
-      containerName:
-        container.name || container.params?.Тип || container.number,
-      containerCity: container.city || container.params?.Город || "Не указан",
+      containerName: container.params?.Номер,
+      containerCity: container.params?.Город || "Не указан",
+      stok: container.params?.Сток,
+      client: container.params?.Клиент,
+      type: container.params?.Тип,
     });
 
     res.status(201).json({ message: "Заявка принята" });

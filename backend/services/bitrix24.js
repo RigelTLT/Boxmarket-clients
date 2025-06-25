@@ -5,11 +5,11 @@ exports.sendLeadToBitrix = async (data) => {
   try {
     await axios.post(webhookUrl, {
       fields: {
-        TITLE: `Заявка от ${data.name}`,
+        TITLE: `Заявка от BoxMarket`,
         NAME: data.name,
         EMAIL: [{ VALUE: data.email, VALUE_TYPE: "WORK" }],
         PHONE: [{ VALUE: data.phone, VALUE_TYPE: "WORK" }],
-        COMMENTS: `Контейнер: ${data.containerName}, Город: ${data.containerCity}`,
+        COMMENTS: `Контейнер: ${data.containerName}, Тип: ${data.type}, Сток: ${data.stok}, Клиент: ${data.client}, Город: ${data.containerCity}`,
       },
     });
   } catch (err) {
