@@ -17,6 +17,5 @@ exports.sendLeadToBitrix = async (data) => {
       "Ошибка при отправке в Bitrix:",
       err.response?.data || err.message
     );
-    // Не выбрасывай ошибку, чтобы не сломать createBooking
   }
 };

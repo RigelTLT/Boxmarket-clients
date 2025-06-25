@@ -142,8 +142,8 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   // Перелистывание через ссылки на страницы
   const pageLinkSelector = `#containersForm\\:containersTable\\:j_id669idx${pageNum}`;
   // Ждем появления ссылки на нужную страницу и кликаем
-  await page.waitForSelector(pageLinkSelector, { timeout: 20000 });
-  await Promise.all([page.click(pageLinkSelector), page.waitForTimeout(1000)]);
+  await page.waitForSelector(pageLinkSelector, { timeout: 25000 });
+  await Promise.all([page.click(pageLinkSelector), page.waitForTimeout(2000)]);
 
   // Ждем, когда нужная строка с абсолютным индексом станет доступна
   await page.waitForSelector(rowSelector, { timeout: 20000 });
