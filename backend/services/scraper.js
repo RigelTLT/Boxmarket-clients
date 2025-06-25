@@ -142,17 +142,17 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   // Перелистывание через ссылки на страницы
   const pageLinkSelector = `#containersForm\\:containersTable\\:j_id669idx${pageNum}`;
   // Ждем появления ссылки на нужную страницу и кликаем
-  await page.waitForSelector(pageLinkSelector, { timeout: 25000 });
-  await Promise.all([page.click(pageLinkSelector), page.waitForTimeout(2000)]);
+  await page.waitForSelector(pageLinkSelector, { timeout: 30000 });
+  await Promise.all([page.click(pageLinkSelector), page.waitForTimeout(3000)]);
 
   // Ждем, когда нужная строка с абсолютным индексом станет доступна
-  await page.waitForSelector(rowSelector, { timeout: 20000 });
+  await page.waitForSelector(rowSelector, { timeout: 30000 });
   await page.click(rowSelector);
 
   // Ждем появления кнопки для выгрузки фотографий
   await page.waitForFunction(
     () => !!document.querySelector('[onclick*="UploadAllFiles"]'),
-    { timeout: 20000 }
+    { timeout: 30000 }
   );
 
   // Извлекаем фрагмент URL для скачивания архива
@@ -218,7 +218,7 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
 
   // Возврат к списку: клик по ссылке "назад"
   await page.click("#containercardform\\:linkback");
-  await page.waitForSelector(pageLinkSelector, { timeout: 20000 });
+  await page.waitForSelector(pageLinkSelector, { timeout: 30000 });
 }
 
 module.exports = { fetchExcelAndSync };
