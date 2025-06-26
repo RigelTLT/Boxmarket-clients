@@ -244,7 +244,7 @@ function renderContainers(items) {
     const $card = $(
       `<div class="col-md-4 col-lg-3 mb-4">
         <div class="card h-100 ${
-          c.params.Забронировал ? "booked" : ""
+          c.params.Забронировал !== "" ? "booked" : ""
         }" data-id="${c._id}">
           <div id="${carouselId}" class="carousel slide" data-bs-ride="carousel">
             <div class="carousel-inner">

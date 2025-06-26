@@ -6,7 +6,7 @@ const unzipper = require("unzipper");
 const CONFIG = require("../config");
 
 async function fetchExcelAndSync(db) {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
   const tmpDir = path.resolve(__dirname, "../tmp");
   const excelPath = path.join(tmpDir, "containers.xlsx");
@@ -142,9 +142,29 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   // Перелистывание через ссылки на страницы
   const pageLinkSelector = `#containersForm\\:containersTable\\:j_id669idx${pageNum}`;
   // Ждем появления ссылки на нужную страницу и кликаем
-  await page.waitForSelector(pageLinkSelector, { timeout: 30000 });
-  await Promise.all([page.click(pageLinkSelector), page.waitForTimeout(3000)]);
-
+  try {
+    await page.waitForSelector(pageLinkSelector, { timeout: 40000 });
+    await Promise.all([
+      page.click(pageLinkSelector),
+      page.waitForTimeout(4000),
+    ]);
+  } catch (error) {
+    console.log(
+      `Не удалось найти ссылку с селектором ${pageLinkSelector}, пытаемся найти другую.`
+    );
+    const alternativeLinkSelector =
+      "#containersForm\\:containersTable\\:j_id664"; // Новый селектор
+    await page.waitForSelector(alternativeLinkSelector, { timeout: 40000 });
+    await Promise.all([
+      page.click(alternativeLinkSelector),
+      page.waitForTimeout(4000),
+    ]);
+    await page.waitForSelector(pageLinkSelector, { timeout: 40000 });
+    await Promise.all([
+      page.click(pageLinkSelector),
+      page.waitForTimeout(4000),
+    ]);
+  }
   // Ждем, когда нужная строка с абсолютным индексом станет доступна
   await page.waitForSelector(rowSelector, { timeout: 30000 });
   await page.click(rowSelector);
@@ -152,7 +172,7 @@ async function fetchPhotosFor(page, idx, number, db, tmpDir) {
   // Ждем появления кнопки для выгрузки фотографий
   await page.waitForFunction(
     () => !!document.querySelector('[onclick*="UploadAllFiles"]'),
-    { timeout: 30000 }
+    { timeout: 60000 }
   );
 
   // Извлекаем фрагмент URL для скачивания архива
