@@ -6,7 +6,7 @@ const unzipper = require("unzipper");
 const CONFIG = require("../config");
 
 async function fetchExcelAndSync(db) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   const tmpDir = path.resolve(__dirname, "../tmp");
   const excelPath = path.join(tmpDir, "containers.xlsx");
